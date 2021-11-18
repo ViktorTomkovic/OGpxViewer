@@ -7,4 +7,8 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="purpleOfficial">#ffa626ff</color>
+    <color name="purpleDocument">#ffb04191</color>
+    <color name="purpleMap1">#ffb30f8e</color>
+    <color name="purpleMap2">#fff22f94</color>
 </resources>
