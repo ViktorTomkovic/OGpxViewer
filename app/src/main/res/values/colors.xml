@@ -11,4 +11,9 @@
     <color name="purpleDocument">#ffb04191</color>
     <color name="purpleMap1">#ffb30f8e</color>
     <color name="purpleMap2">#fff22f94</color>
+    <color name="northLineOfficial">#ff00ffff</color>
+    <color name="northLineDocument">#ff3da5e2</color>
+    <color name="northLineBlack">#ff1d1d1b</color>
+    <color name="northLineMine">#ff0ba7e1</color>
+
 </resources>

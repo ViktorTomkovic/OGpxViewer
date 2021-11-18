@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Range
 import android.widget.ImageView
 import androidx.annotation.DrawableRes
 import androidx.annotation.IdRes
@@ -33,39 +34,62 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun transformImages() {
-        identifyPurple(R.id.imageViewSitina, R.drawable.sitina)
-        identifyPurple(R.id.imageViewNightRun, R.drawable.nightrun)
-        identifyPurple(R.id.imageViewOwalk, R.drawable.owalk)
+        identifyColor(R.id.imageViewSitina, R.drawable.sitina)
+        identifyColor(R.id.imageViewNightRun, R.drawable.nightrun)
+        identifyColor(R.id.imageViewOwalk, R.drawable.owalk)
     }
 
-    private fun identifyPurple(@IdRes imageViewId: Int, @DrawableRes sourceId: Int) {
+    private fun identifyColor(@IdRes imageViewId: Int, @DrawableRes sourceId: Int) {
         var bitmap: Bitmap = BitmapFactory.decodeResource(resources, sourceId)
         if (isInColor) {
-            bitmap = filterPurple(bitmap)
+            val color = Color.valueOf(getColor(R.color.northLineMine))
+//            bitmap = filterColorByRGBDifference(bitmap, color)
+            bitmap = filterColorByHueRange(bitmap, Range<Double>(130.0,150.0), Range<Double>(50.0,100.0), Range<Double>(50.0,100.0))
         }
         val imageView: ImageView = findViewById(imageViewId)
         imageView.setImageBitmap(bitmap)
     }
 
-    private fun filterPurple(bitmap: Bitmap): Bitmap {
+    private fun filterColorByRGBDifference(bitmap: Bitmap, color: Color): Bitmap {
         val mat = Mat()
         Utils.bitmapToMat(bitmap, mat)
 
-        val purpleColor = Color.valueOf(getColor(R.color.purpleMap2))
-        val purple: Scalar = Scalar(
-            purpleColor.red().toDouble()*255,
-            purpleColor.green().toDouble()*255, purpleColor.blue().toDouble()*255
+        val filteringColor = Scalar(
+            color.red().toDouble() * 255,
+            color.green().toDouble() * 255, color.blue().toDouble() * 255
         )
-        Core.absdiff(mat, purple, mat)
+        Core.absdiff(mat, filteringColor, mat)
         Imgproc.cvtColor(mat, mat, Imgproc.COLOR_RGB2GRAY)
         Core.bitwise_not(mat, mat)
         val threshold = Core.minMaxLoc(mat).maxVal
-        val thresholdWithMargin = threshold * 0.80
+        val thresholdWithMargin = threshold * 0.85
         Imgproc.threshold(mat, mat, thresholdWithMargin, 255.0, Imgproc.THRESH_TOZERO)
 
-        val purpleBitmap = bitmap.copy(bitmap.config, true)
-        Utils.matToBitmap(mat, purpleBitmap)
+        val filteredBitmap = bitmap.copy(bitmap.config, true)
+        Utils.matToBitmap(mat, filteredBitmap)
 
-        return purpleBitmap
+        return filteredBitmap
+    }
+
+    private fun filterColorByHueRange(bitmap: Bitmap, hueRange: Range<Double>, saturationRange: Range<Double>, valueRange: Range<Double>): Bitmap {
+        val mat = Mat()
+        Utils.bitmapToMat(bitmap, mat)
+
+        Imgproc.cvtColor(mat, mat, Imgproc.COLOR_RGB2HSV)
+
+        val upper = Scalar(hueRange.upper, saturationRange.upper, valueRange.upper)
+        val lower = Scalar(hueRange.lower, saturationRange.lower, valueRange.lower)
+        val mask = mat.clone()
+
+        Core.inRange(mat, lower, upper, mask)
+
+        Core.bitwise_and(mat, mat, mask)
+        Imgproc.cvtColor(mask, mask, Imgproc.COLOR_RGB2GRAY)
+
+        val filteredBitmap = bitmap.copy(bitmap.config, true)
+        Utils.matToBitmap(mat, filteredBitmap)
+
+        return filteredBitmap
+
     }
 }
