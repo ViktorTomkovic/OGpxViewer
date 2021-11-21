@@ -3,6 +3,7 @@ package com.github.viktortomkovic.ogpxviewer
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.ColorSpace
 import android.os.Bundle
 import android.util.Range
 import android.widget.ImageView
@@ -21,6 +22,7 @@ import org.opencv.imgproc.Imgproc
 class MainActivity : AppCompatActivity() {
     private var isInColor: Boolean = true
     private val debug: DebugAdapter = DebugAdapter()
+    private val maxHue: Int = 256
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -173,32 +175,52 @@ class MainActivity : AppCompatActivity() {
         Imgproc.cvtColor(matOrig, hsvMat, Imgproc.COLOR_RGB2HSV)
         debug.add(mat, bitmap)
 
-        val histogram = Mat.ones(1, 180, CvType.CV_8UC1)
-        Imgproc.cvtColor(mat, mat, Imgproc.COLOR_RGB2GRAY)
+        // Imgproc.cvtColor(mat, mat, Imgproc.COLOR_RGB2GRAY)
 
-        val mask = Mat.ones(Size(bitmap.width.toDouble(), bitmap.height.toDouble()), CvType.CV_8UC1)
+        val pathMask = Mat.ones(Size(bitmap.width.toDouble(), bitmap.height.toDouble()), CvType.CV_8UC1)
 
-        val hist_bins = 30 //number of histogram bins
-
-        val hist_range = intArrayOf(0, 180) //histogram range
-
-        val ranges = MatOfFloat(0f, 256f)
-        val histSize = MatOfInt(25)
-
-        Imgproc.calcHist(listOf(hsvMat), MatOfInt(0), Mat(), histogram, histSize, ranges)
         // debug.add(histogram, bitmap)
-
+/*
         Core.inRange(hsvMat, Scalar(150.0, 10.0, 10.0), Scalar(200.0, 255.0, 255.0), mask)
         debug.add(mask, bitmap)
         Core.inRange(hsvMat, Scalar(130.0, 5.0, 5.0), Scalar(220.0, 250.0, 250.0), mask)
         debug.add(mask, bitmap)
-        Core.inRange(hsvMat, Scalar(130.0, 10.0, 10.0), Scalar(220.0, 255.0, 255.0), mask)
-        debug.add(mask, bitmap)
 
+ */
+        Core.inRange(hsvMat, Scalar(130.0, 10.0, 10.0), Scalar(220.0, 255.0, 255.0), pathMask)
+        // debug.add(pathMask, bitmap)
+
+        val ranges = MatOfFloat(0f, 256f)
+        val histSize = MatOfInt(maxHue)
+
+        val histogram = Mat.ones(maxHue, 1, CvType.CV_8UC1)
+        Imgproc.calcHist(listOf(hsvMat), MatOfInt(0), pathMask, histogram, histSize, ranges)
+        Core.normalize(histogram, histogram, 0.0, 256.0, Core.NORM_MINMAX)
+        val histBitmap = Bitmap.createBitmap(maxHue, 256, Bitmap.Config.ARGB_8888)
+        Utils.matToBitmap(hueHistogram(histogram), histBitmap)
+        debug.add(histBitmap)
+
+        debug.add(pathMask, bitmap)
 
         val bitmapWithCircles = bitmap.copy(bitmap.config, true)
         Utils.matToBitmap(matOrig, bitmapWithCircles)
 
         return bitmapWithCircles
+    }
+
+    fun hueHistogram(histogram: Mat): Mat {
+        val result = Mat(256, maxHue, CvType.CV_8UC3)
+
+        for (i in 0 until maxHue-1) {
+            val currentValue = histogram[i, 0][0].toInt()
+            val nextValue = histogram[i + 1, 0][0].toInt()
+            Imgproc.line(
+                result, Point(i.toDouble(), (255 - currentValue).toDouble()),
+                Point((i + 1).toDouble(), (255 - nextValue).toDouble()),
+                Scalar(i.toDouble(), 255.0, 255.0)
+            )
+        }
+        Imgproc.cvtColor(result, result, Imgproc.COLOR_HSV2RGB)
+        return result
     }
 }
